@@ -11,15 +11,17 @@ let guests = [];
 
 /** Updates state with all parties from the API */
 async function getParties() {
+  loading.parties = true; errorMsg = ""; render();
   try {
     const res = await fetch(`${API}/events`);
     const result = await res.json();
-    parties = result.data
-      .slice()
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-    render();
+    parties = result.data.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
   } catch (e) {
     console.error(e);
+    errorMsg = "Failed to load parties. Please refresh.";
+  } finally {
+    loading.parties = false;
+    render();
   }
 }
 
@@ -37,27 +39,35 @@ async function getParty(id) {
 
 /** Updates state with all RSVPs from the API */
 async function getRsvps() {
+  loading.rsvps = true; errorMsg = ""; render();
   try {
     const res = await fetch(`${API}/rsvps`);
     const result = await res.json();
     rsvps = result.data;
-    render();
   } catch (e) {
     console.error(e);
+    errorMsg = "Failed to load RSVPs.";
+  } finally {
+    loading.rsvps = false;
+    render();
   }
 }
 
 /** Updates state with all guests from the API */
 async function getGuests() {
+  loading.guests = true; errorMsg = ""; render();
   try {
     const res = await fetch(`${API}/guests`);
     const result = await res.json();
     guests = result.data;
-    render();
   } catch (e) {
     console.error(e);
+    errorMsg = "Failed to load guests.";
+  } finally {
+    loading.guests = false;
+    render();
   }
-}
+}}
 
 /** Create a new party (POST /events) */
 async function createParty(party) {
