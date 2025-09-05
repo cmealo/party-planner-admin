@@ -14,7 +14,9 @@ async function getParties() {
   try {
     const res = await fetch(`${API}/events`);
     const result = await res.json();
-    parties = result.data;
+    parties = result.data
+      .slice()
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
     render();
   } catch (e) {
     console.error(e);
