@@ -12,8 +12,8 @@ let guests = [];
 /** Updates state with all parties from the API */
 async function getParties() {
   try {
-    const response = await fetch(API + "/events");
-    const result = await response.json();
+    const res = await fetch(`${API}/events`);
+    const result = await res.json();
     parties = result.data;
     render();
   } catch (e) {
@@ -24,8 +24,8 @@ async function getParties() {
 /** Updates state with a single party from the API */
 async function getParty(id) {
   try {
-    const response = await fetch(API + "/events/" + id);
-    const result = await response.json();
+    const res = await fetch(`${API}/events/${id}`);
+    const result = await res.json();
     selectedParty = result.data;
     render();
   } catch (e) {
@@ -36,8 +36,8 @@ async function getParty(id) {
 /** Updates state with all RSVPs from the API */
 async function getRsvps() {
   try {
-    const response = await fetch(API + "/rsvps");
-    const result = await response.json();
+    const res = await fetch(`${API}/rsvps`);
+    const result = await res.json();
     rsvps = result.data;
     render();
   } catch (e) {
@@ -48,8 +48,8 @@ async function getRsvps() {
 /** Updates state with all guests from the API */
 async function getGuests() {
   try {
-    const response = await fetch(API + "/guests");
-    const result = await response.json();
+    const res = await fetch(`${API}/guests`);
+    const result = await res.json();
     guests = result.data;
     render();
   } catch (e) {
@@ -71,19 +71,23 @@ async function createParty(party) {
   return res.json();
 }
 
+/** Delete a party (DELETE /events/:id) */
+async function deleteParty(id) {
+  const res = await fetch(`${API}/events/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Delete failed (${res.status}): ${text}`);
+  }
+}
+
 // === Components ===
 
 /** Party name that shows more details about the party when clicked */
 function PartyListItem(party) {
   const $li = document.createElement("li");
+  if (party.id === selectedParty?.id) $li.classList.add("selected");
 
-  if (party.id === selectedParty?.id) {
-    $li.classList.add("selected");
-  }
-
-  $li.innerHTML = `
-    <a href="#selected">${party.name}</a>
-  `;
+  $li.innerHTML = `<a href="#selected">${party.name}</a>`;
   $li.addEventListener("click", () => getParty(party.id));
   return $li;
 }
@@ -92,59 +96,33 @@ function PartyListItem(party) {
 function PartyList() {
   const $ul = document.createElement("ul");
   $ul.classList.add("parties");
-
-  const $parties = parties.map(PartyListItem);
-  $ul.replaceChildren(...$parties);
-
+  $ul.replaceChildren(...parties.map(PartyListItem));
   return $ul;
-}
-
-/** Detailed information about the selected party */
-function SelectedParty() {
-  if (!selectedParty) {
-    const $p = document.createElement("p");
-    $p.textContent = "Please select a party to learn more.";
-    return $p;
-  }
-
-  const $party = document.createElement("section");
-  $party.innerHTML = `
-    <h3>${selectedParty.name} #${selectedParty.id}</h3>
-    <time datetime="${selectedParty.date}">
-      ${selectedParty.date.slice(0, 10)}
-    </time>
-    <address>${selectedParty.location}</address>
-    <p>${selectedParty.description}</p>
-    <GuestList></GuestList>
-  `;
-  $party.querySelector("GuestList").replaceWith(GuestList());
-
-  return $party;
 }
 
 /** List of guests attending the selected party */
 function GuestList() {
   const $ul = document.createElement("ul");
+  if (!selectedParty) return $ul;
+
   const guestsAtParty = guests.filter((guest) =>
     rsvps.find(
       (rsvp) => rsvp.guestId === guest.id && rsvp.eventId === selectedParty.id
     )
   );
 
-  // Simple components can also be created anonymously:
   const $guests = guestsAtParty.map((guest) => {
-    const $guest = document.createElement("li");
-    $guest.textContent = guest.name;
-    return $guest;
+    const $li = document.createElement("li");
+    $li.textContent = guest.name;
+    return $li;
   });
   $ul.replaceChildren(...$guests);
-
   return $ul;
 }
 
+/** New party form */
 function NewPartyForm() {
   const $form = document.createElement("form");
-
   $form.innerHTML = `
     <h2>Add a New Party</h2>
     <label>
@@ -166,13 +144,18 @@ function NewPartyForm() {
     <button type="submit">Create Party</button>
   `;
 
+  // Optional: prevent past dates
+  const dateInput = $form.querySelector('input[name="date"]');
+  if (dateInput)
+    dateInput.setAttribute("min", new Date().toISOString().slice(0, 10));
+
   $form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData($form);
     const payload = {
       name: fd.get("name").trim(),
       description: fd.get("description").trim(),
-      date: new Date(fd.get("date")).toISOString(), // ISO required
+      date: new Date(fd.get("date")).toISOString(), // ISO required by API
       location: fd.get("location").trim(),
     };
 
@@ -188,6 +171,47 @@ function NewPartyForm() {
   });
 
   return $form;
+}
+
+/** Detailed information about the selected party (with Delete) */
+function SelectedParty() {
+  if (!selectedParty) {
+    const $p = document.createElement("p");
+    $p.textContent = "Please select a party to learn more.";
+    return $p;
+  }
+
+  const $party = document.createElement("section");
+  $party.innerHTML = `
+    <h3>${selectedParty.name} #${selectedParty.id}</h3>
+    <time datetime="${selectedParty.date}">
+      ${selectedParty.date.slice(0, 10)}
+    </time>
+    <address>${selectedParty.location}</address>
+    <p>${selectedParty.description}</p>
+    <div style="margin:.5rem 0;">
+      <button id="delete-party">Delete Party</button>
+    </div>
+    <GuestList></GuestList>
+  `;
+
+  $party.querySelector("GuestList").replaceWith(GuestList());
+
+  $party.querySelector("#delete-party").addEventListener("click", async () => {
+    if (!confirm(`Delete "${selectedParty.name}"? This cannot be undone.`))
+      return;
+    try {
+      await deleteParty(selectedParty.id);
+      selectedParty = undefined; // clear selection
+      await getParties(); // refresh list
+      render();
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete party. Try again.");
+    }
+  });
+
+  return $party;
 }
 
 // === Render ===
