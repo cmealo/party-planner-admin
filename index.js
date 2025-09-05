@@ -226,9 +226,14 @@ function SelectedParty() {
 // === Render ===
 function render() {
   const $app = document.querySelector("#app");
+
+  const isAnyLoading = loading.parties || loading.rsvps || loading.guests;
+
   $app.innerHTML = `
     <h1>Party Planner</h1>
-    <main>
+    ${errorMsg ? `<p role="alert" style="color:#b00;">${errorMsg}</p>` : ""}
+    ${isAnyLoading ? `<p>Loading data…</p>` : ""}
+    <main ${isAnyLoading ? 'aria-busy="true"' : ""}>
       <section>
         <NewPartyForm></NewPartyForm>
         <h2>Upcoming Parties</h2>
