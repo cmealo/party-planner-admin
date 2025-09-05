@@ -153,22 +153,29 @@ function NewPartyForm() {
 
   $form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    const submitBtn = $form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true; // prevent double submit
+
     const fd = new FormData($form);
     const payload = {
       name: fd.get("name").trim(),
       description: fd.get("description").trim(),
-      date: new Date(fd.get("date")).toISOString(), // ISO required by API
+      date: new Date(fd.get("date")).toISOString(),
       location: fd.get("location").trim(),
     };
 
     try {
-      await createParty(payload);
-      await getParties(); // refresh state
-      render(); // re-render UI
-      $form.reset(); // clear form
+      const { data: created } = await createParty(payload); // capture created party
+      await getParties(); // refresh list (sorted)
+      selectedParty = created; // auto-select the new one
+      render(); // show it in details
+      $form.reset();
     } catch (err) {
       console.error(err);
       alert("Could not create party. Check the date and try again.");
+    } finally {
+      submitBtn.disabled = false; // re-enable either way
     }
   });
 
