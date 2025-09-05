@@ -57,6 +57,20 @@ async function getGuests() {
   }
 }
 
+/** Create a new party (POST /events) */
+async function createParty(party) {
+  const res = await fetch(`${API}/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(party),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Create failed (${res.status}): ${text}`);
+  }
+  return res.json();
+}
+
 // === Components ===
 
 /** Party name that shows more details about the party when clicked */
@@ -152,17 +166,25 @@ function NewPartyForm() {
     <button type="submit">Create Party</button>
   `;
 
-  $form.addEventListener("submit", (e) => {
+  $form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData($form);
     const payload = {
       name: fd.get("name").trim(),
       description: fd.get("description").trim(),
-      date: new Date(fd.get("date")).toISOString(), // ISO string required by API
+      date: new Date(fd.get("date")).toISOString(), // ISO required
       location: fd.get("location").trim(),
     };
-    console.log("NEW PARTY PAYLOAD →", payload);
-    // next step we'll POST this, then refresh state
+
+    try {
+      await createParty(payload);
+      await getParties(); // refresh state
+      render(); // re-render UI
+      $form.reset(); // clear form
+    } catch (err) {
+      console.error(err);
+      alert("Could not create party. Check the date and try again.");
+    }
   });
 
   return $form;
@@ -176,10 +198,6 @@ function render() {
     <main>
       <section>
         <NewPartyForm></NewPartyForm>
-        <h2>Upcoming Parties</h2>
-        <PartyList></PartyList>
-      </section>
-      <section>
         <h2>Upcoming Parties</h2>
         <PartyList></PartyList>
       </section>
