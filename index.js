@@ -9,13 +9,21 @@ let selectedParty;
 let rsvps = [];
 let guests = [];
 
+// Loading & error state
+let loading = { parties: false, rsvps: false, guests: false };
+let errorMsg = "";
+
 /** Updates state with all parties from the API */
 async function getParties() {
-  loading.parties = true; errorMsg = ""; render();
+  loading.parties = true;
+  errorMsg = "";
+  render();
   try {
     const res = await fetch(`${API}/events`);
     const result = await res.json();
-    parties = result.data.slice().sort((a, b) => new Date(a.date) - new Date(b.date));
+    parties = result.data
+      .slice()
+      .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   } catch (e) {
     console.error(e);
     errorMsg = "Failed to load parties. Please refresh.";
@@ -39,7 +47,9 @@ async function getParty(id) {
 
 /** Updates state with all RSVPs from the API */
 async function getRsvps() {
-  loading.rsvps = true; errorMsg = ""; render();
+  loading.rsvps = true;
+  errorMsg = "";
+  render();
   try {
     const res = await fetch(`${API}/rsvps`);
     const result = await res.json();
@@ -55,7 +65,9 @@ async function getRsvps() {
 
 /** Updates state with all guests from the API */
 async function getGuests() {
-  loading.guests = true; errorMsg = ""; render();
+  loading.guests = true;
+  errorMsg = "";
+  render();
   try {
     const res = await fetch(`${API}/guests`);
     const result = await res.json();
@@ -67,7 +79,7 @@ async function getGuests() {
     loading.guests = false;
     render();
   }
-}}
+}
 
 /** Create a new party (POST /events) */
 async function createParty(party) {
@@ -171,7 +183,7 @@ function NewPartyForm() {
     const payload = {
       name: fd.get("name").trim(),
       description: fd.get("description").trim(),
-      date: new Date(fd.get("date")).toISOString(),
+      date: new Date(fd.get("date")).toISOString(), // ISO required by API
       location: fd.get("location").trim(),
     };
 
@@ -181,6 +193,7 @@ function NewPartyForm() {
       selectedParty = created; // auto-select the new one
       render(); // show it in details
       $form.reset();
+      $form.querySelector('input[name="name"]').focus();
     } catch (err) {
       console.error(err);
       alert("Could not create party. Check the date and try again.");
@@ -219,6 +232,8 @@ function SelectedParty() {
   $party.querySelector("#delete-party").addEventListener("click", async () => {
     if (!confirm(`Delete "${selectedParty.name}"? This cannot be undone.`))
       return;
+    const delBtn = $party.querySelector("#delete-party");
+    delBtn.disabled = true;
     try {
       await deleteParty(selectedParty.id);
       selectedParty = undefined; // clear selection
@@ -227,6 +242,8 @@ function SelectedParty() {
     } catch (err) {
       console.error(err);
       alert("Could not delete party. Try again.");
+    } finally {
+      delBtn.disabled = false;
     }
   });
 
