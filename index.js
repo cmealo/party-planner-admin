@@ -1,6 +1,6 @@
 // === Constants ===
 const BASE = "https://fsa-crud-2aa9294fe819.herokuapp.com/api";
-const COHORT = ""; // Make sure to change this!
+const COHORT = "/2507"; // change to your cohort if needed
 const API = BASE + COHORT;
 
 // === State ===
@@ -128,12 +128,57 @@ function GuestList() {
   return $ul;
 }
 
+function NewPartyForm() {
+  const $form = document.createElement("form");
+
+  $form.innerHTML = `
+    <h2>Add a New Party</h2>
+    <label>
+      Name
+      <input name="name" type="text" required />
+    </label>
+    <label>
+      Description
+      <textarea name="description" required></textarea>
+    </label>
+    <label>
+      Date
+      <input name="date" type="date" required />
+    </label>
+    <label>
+      Location
+      <input name="location" type="text" required />
+    </label>
+    <button type="submit">Create Party</button>
+  `;
+
+  $form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const fd = new FormData($form);
+    const payload = {
+      name: fd.get("name").trim(),
+      description: fd.get("description").trim(),
+      date: new Date(fd.get("date")).toISOString(), // ISO string required by API
+      location: fd.get("location").trim(),
+    };
+    console.log("NEW PARTY PAYLOAD →", payload);
+    // next step we'll POST this, then refresh state
+  });
+
+  return $form;
+}
+
 // === Render ===
 function render() {
   const $app = document.querySelector("#app");
   $app.innerHTML = `
     <h1>Party Planner</h1>
     <main>
+      <section>
+        <NewPartyForm></NewPartyForm>
+        <h2>Upcoming Parties</h2>
+        <PartyList></PartyList>
+      </section>
       <section>
         <h2>Upcoming Parties</h2>
         <PartyList></PartyList>
@@ -145,6 +190,7 @@ function render() {
     </main>
   `;
 
+  $app.querySelector("NewPartyForm").replaceWith(NewPartyForm());
   $app.querySelector("PartyList").replaceWith(PartyList());
   $app.querySelector("SelectedParty").replaceWith(SelectedParty());
 }
